@@ -1,0 +1,15 @@
+# Local development database: docker compose up -d
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: desiva
+      POSTGRES_PASSWORD: desiva
+      POSTGRES_DB: desiva
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

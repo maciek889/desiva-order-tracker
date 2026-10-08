@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  Admin
+  Office
+  Worker
+}
+
+enum OrderStatus {
+  active
+  completed
+}
+
+model User {
+  id         String      @id @default(cuid())
+  login      String      @unique
+  password   String
+  role       UserRole    @default(Worker)
+  hourlyRate Float       @default(0)
+  timeEntries TimeEntry[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Stage {
+  id        String      @id @default(cuid())
+  name      String
+  nameEn    String      @default("")
+  position  Int         @unique
+  type      String      @default("factory")
+  orders    Order[]
+  timeEntries TimeEntry[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Color {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id               String      @id
+  name             String
+  price            Float
+  client           String
+  internalCode     String?
+  status           OrderStatus @default(active)
+  colorId          String
+  color            Color       @relation(fields: [colorId], references: [id])
+  stageId          String
+  stage            Stage       @relation(fields: [stageId], references: [id])
+  categoryId       String
+  category         Category    @relation(fields: [categoryId], references: [id])
+  uwagi            String      @default("")
+  dueDate          DateTime?
+  notatki          String      @default("")
+  isCustomOrder    Boolean     @default(false)
+  files            OrderFile[]
+  timeEntries      TimeEntry[]
+  completedAt      DateTime?
+  totalOfficeTime  Float?
+  totalFactoryTime Float?
+  totalCost        Float?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([dueDate])
+  @@index([stageId])
+  @@index([categoryId])
+  @@index([colorId])
+  @@index([status, createdAt])
+}
+
+model OrderFile {
+  id        String   @id @default(cuid())
+  filename  String
+  filepath  String
+  mimetype  String   @default("")
+  size      Int      @default(0)
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model TimeEntry {
+  id        String    @id @default(cuid())
+  orderId   String
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stageId   String
+  stage     Stage     @relation(fields: [stageId], references: [id])
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  startedAt DateTime
+  endedAt   DateTime?
+  duration  Float     @default(0)
+  cost      Float     @default(0)
+  isActive  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([stageId])
+  @@index([isActive])
+  @@index([userId, orderId, isActive])
+}
+
+model Lead {
+  id           String   @id @default(cuid())
+  customerName String
+  orderName    String
+  email        String?
+  phoneNumber  String?
+  notes        String   @default("") @db.Text
+  stage        String   @default("Nowy")
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}

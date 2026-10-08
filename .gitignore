@@ -1,0 +1,25 @@
+# Dependencies & build output
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Environment / secrets — only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# Local database & uploads
+prisma/dev.db
+prisma/dev.db-journal
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Tooling / OS
+.claude/
+.superpowers/
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db
