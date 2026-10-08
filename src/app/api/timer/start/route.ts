@@ -11,6 +11,7 @@ export const POST = apiHandler(async (req) => {
 
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { stage: true } });
   if (!order || order.status !== "active") return errorResponse("Zamówienie nie znalezione", 404);
+  if (order.stage.type !== "factory") return errorResponse("Ten etap nie jest etapem produkcji", 403);
 
   const entry = await prisma.$transaction(async (tx) => {
     const existing = await tx.timeEntry.findFirst({

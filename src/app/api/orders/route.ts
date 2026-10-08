@@ -8,6 +8,7 @@ export const GET = apiHandler(async (req) => {
   const user = await requireAuth();
   const url = new URL(req.url);
   const status = url.searchParams.get("status") || "active";
+  if (!Object.values(OrderStatus).includes(status as OrderStatus)) return errorResponse("Nieprawidłowy status");
   const search = url.searchParams.get("search") || "";
 
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
@@ -50,7 +51,7 @@ export const GET = apiHandler(async (req) => {
 });
 
 export const POST = apiHandler(async (req) => {
-  await requireAuth(["Admin", "Office"]);
+  const user = await requireAuth(["Admin", "Office"]);
   const body = await req.json();
   const { name, price, client, colorId, stageId, categoryId, uwagi, notatki, dueDate, internalCode, isCustomOrder } = body;
 
@@ -59,6 +60,8 @@ export const POST = apiHandler(async (req) => {
   }
   if (typeof name !== "string" || name.length > 200) return errorResponse("Nieprawidłowa nazwa");
   if (typeof client !== "string" || client.length > 200) return errorResponse("Nieprawidłowy klient");
+  if (uwagi != null && typeof uwagi !== "string") return errorResponse("Nieprawidłowe uwagi");
+  if (notatki != null && typeof notatki !== "string") return errorResponse("Nieprawidłowe notatki");
   const parsedPrice = parseFloat(price);
   if (isNaN(parsedPrice) || parsedPrice < 0) return errorResponse("Nieprawidłowa cena");
 
@@ -71,8 +74,8 @@ export const POST = apiHandler(async (req) => {
       colorId,
       stageId,
       categoryId,
-      uwagi: uwagi || "",
-      notatki: notatki || "",
+      uwagi: (uwagi || "").slice(0, 300),
+      notatki: (notatki || "").slice(0, 300),
       internalCode: internalCode || null,
       isCustomOrder: isCustomOrder === true,
       dueDate: dueDate ? new Date(dueDate) : null,
@@ -81,5 +84,5 @@ export const POST = apiHandler(async (req) => {
   });
 
   emitEvent("orders:changed");
-  return jsonResponse(order, 201);
+  return jsonResponse(redactOrder(order, user.role), 201);
 });

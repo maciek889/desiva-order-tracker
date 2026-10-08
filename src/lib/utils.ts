@@ -69,7 +69,17 @@ export function apiHandler(handler: RouteHandler): RouteHandler {
       if (e instanceof Prisma.PrismaClientKnownRequestError) {
         if (e.code === "P2002") return errorResponse("Rekord o tej wartości już istnieje", 409);
         if (e.code === "P2025") return errorResponse("Nie znaleziono rekordu", 404);
+        // Foreign key violation, e.g. deleting a record that other records still reference
+        if (e.code === "P2003") return errorResponse("Rekord jest powiązany z innymi danymi", 409);
+        // Serializable transaction conflict
+        if (e.code === "P2034") return errorResponse("Konflikt zapisu, spróbuj ponownie", 409);
       }
+      // Wrongly typed input that reached a query (e.g. invalid enum value or date)
+      if (e instanceof Prisma.PrismaClientValidationError) {
+        return errorResponse("Nieprawidłowe dane", 400);
+      }
+      // Malformed JSON request body
+      if (e instanceof SyntaxError) return errorResponse("Nieprawidłowy format danych", 400);
       // Unexpected error — log details server-side, never leak internals to the client
       console.error(`[${req.method} ${req.nextUrl.pathname}]`, e);
       return errorResponse("Internal server error", 500);

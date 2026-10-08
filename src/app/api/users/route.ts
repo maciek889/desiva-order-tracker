@@ -51,6 +51,12 @@ export const PUT = apiHandler(async (req) => {
 export const DELETE = apiHandler(async (req) => {
   await requireAuth(["Admin"]);
   const { id } = await req.json();
+  if (!id || typeof id !== "string") return errorResponse("ID jest wymagane");
+  // Logged work time is part of order history and cost reports, so it must not disappear
+  const entryCount = await prisma.timeEntry.count({ where: { userId: id } });
+  if (entryCount > 0) {
+    return errorResponse(`Nie można usunąć użytkownika — ma zarejestrowany czas pracy (${entryCount} wpisów)`, 409);
+  }
   await prisma.user.delete({ where: { id } });
   return jsonResponse({ ok: true });
 });

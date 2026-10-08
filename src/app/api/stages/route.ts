@@ -36,9 +36,14 @@ export const PUT = apiHandler(async (req) => {
 export const DELETE = apiHandler(async (req) => {
   await requireAuth(["Admin"]);
   const { id } = await req.json();
+  if (!id || typeof id !== "string") return errorResponse("ID jest wymagane");
   const orderCount = await prisma.order.count({ where: { stageId: id } });
   if (orderCount > 0) {
     return errorResponse(`Nie można usunąć etapu — ${orderCount} zamówień go używa`, 409);
+  }
+  const entryCount = await prisma.timeEntry.count({ where: { stageId: id } });
+  if (entryCount > 0) {
+    return errorResponse(`Nie można usunąć etapu — ma zarejestrowany czas pracy (${entryCount} wpisów)`, 409);
   }
   await prisma.stage.delete({ where: { id } });
   return jsonResponse({ ok: true });

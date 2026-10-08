@@ -27,11 +27,18 @@ export function verifyToken(token: string): AuthUser | null {
   }
 }
 
+// The token only proves identity. Role and hourly rate are always read from the database,
+// so role changes and deleted accounts take effect immediately instead of when the token expires.
 export async function getAuthUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth_token")?.value;
   if (!token) return null;
-  return verifyToken(token);
+  const payload = verifyToken(token);
+  if (!payload?.id) return null;
+  return prisma.user.findUnique({
+    where: { id: payload.id },
+    select: { id: true, login: true, role: true, hourlyRate: true },
+  });
 }
 
 export async function requireAuth(roles?: UserRole[]): Promise<AuthUser> {

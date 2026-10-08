@@ -5,6 +5,17 @@ import { Card, Btn, Badge, Field, Loader } from "@/components/ui";
 import { Layers, Tag, Palette, Users, Plus, Edit, Trash2, Search, ChevronUp, ChevronDown } from "lucide-react";
 import type { Stage, Category, Color, User } from "@/lib/types";
 
+// Shows API errors (e.g. "still in use", "already exists") instead of failing silently
+function withErrorAlert(action: () => Promise<void>) {
+  return async () => {
+    try {
+      await action();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Błąd");
+    }
+  };
+}
+
 export default function SettingsPage() {
   const [tab, setTab] = useState("stages");
   const tabs = [
@@ -48,7 +59,7 @@ function StagesTab() {
 
   const displayStages = orderedStages.length === stages.length ? orderedStages : stages;
 
-  const handleSave = async () => {
+  const handleSave = withErrorAlert(async () => {
     if (!form.name) return;
     if (editId) {
       await api("/api/stages", { method: "PUT", body: JSON.stringify({ id: editId, ...form, position: stages.find(s => s.id === editId)?.position }) });
@@ -58,7 +69,7 @@ function StagesTab() {
     setForm({ name: "", nameEn: "", type: "factory" });
     setEditId(null);
     refetch();
-  };
+  });
 
   const handleMove = async (index: number, direction: "up" | "down") => {
     if (isReordering) return;
@@ -84,10 +95,10 @@ function StagesTab() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => withErrorAlert(async () => {
     await api("/api/stages", { method: "DELETE", body: JSON.stringify({ id }) });
     refetch();
-  };
+  })();
 
   return (
     <Card>
@@ -144,7 +155,7 @@ function CategoriesTab() {
 
   if (loading || !categories) return <Loader />;
 
-  const handleSave = async () => {
+  const handleSave = withErrorAlert(async () => {
     if (!name) return;
     if (editId) {
       await api("/api/categories", { method: "PUT", body: JSON.stringify({ id: editId, name }) });
@@ -154,7 +165,7 @@ function CategoriesTab() {
     }
     setName("");
     refetch();
-  };
+  });
 
   return (
     <Card>
@@ -164,7 +175,7 @@ function CategoriesTab() {
             <span className="text-sm font-medium">{c.name}</span>
             <div className="flex gap-2">
               <button onClick={() => { setEditId(c.id); setName(c.name); }} className="p-1.5 rounded" style={{ color: "var(--text-muted)" }}><Edit size={14} /></button>
-              <button onClick={async () => { await api("/api/categories", { method: "DELETE", body: JSON.stringify({ id: c.id }) }); refetch(); }}
+              <button onClick={withErrorAlert(async () => { await api("/api/categories", { method: "DELETE", body: JSON.stringify({ id: c.id }) }); refetch(); })}
                 className="p-1.5 rounded" style={{ color: "var(--red)" }}><Trash2 size={14} /></button>
             </div>
           </div>
@@ -197,14 +208,14 @@ function ColorsTab() {
         {filtered.map((c) => (
           <div key={c.id} className="flex items-center justify-between p-2 rounded-lg text-sm" style={{ background: "var(--bg-secondary)" }}>
             <span className="text-xs">{c.name}</span>
-            <button onClick={async () => { await api("/api/colors", { method: "DELETE", body: JSON.stringify({ id: c.id }) }); refetch(); }}
+            <button onClick={withErrorAlert(async () => { await api("/api/colors", { method: "DELETE", body: JSON.stringify({ id: c.id }) }); refetch(); })}
               className="p-1 rounded" style={{ color: "var(--red)" }}><Trash2 size={12} /></button>
           </div>
         ))}
       </div>
       <div className="flex gap-3">
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Nowy kolor NCS" className="flex-1" />
-        <Btn onClick={async () => { if (name) { await api("/api/colors", { method: "POST", body: JSON.stringify({ name }) }); setName(""); refetch(); } }}>
+        <Btn onClick={withErrorAlert(async () => { if (name) { await api("/api/colors", { method: "POST", body: JSON.stringify({ name }) }); setName(""); refetch(); } })}>
           <Plus size={14} /> Dodaj
         </Btn>
       </div>
@@ -219,7 +230,7 @@ function UsersTab() {
 
   if (loading || !users) return <Loader />;
 
-  const handleSave = async () => {
+  const handleSave = withErrorAlert(async () => {
     if (!form.login) return;
     if (editId) {
       const body: Record<string, string> = { id: editId, login: form.login, role: form.role, hourlyRate: form.hourlyRate };
@@ -232,7 +243,7 @@ function UsersTab() {
     }
     setForm({ login: "", password: "", role: "Worker", hourlyRate: "0" });
     refetch();
-  };
+  });
 
   return (
     <Card>
@@ -253,7 +264,7 @@ function UsersTab() {
               <button onClick={() => { setEditId(u.id); setForm({ login: u.login, password: "", role: u.role, hourlyRate: String(u.hourlyRate) }); }}
                 className="p-1.5 rounded" style={{ color: "var(--text-muted)" }}><Edit size={14} /></button>
               {u.role !== "Admin" && (
-                <button onClick={async () => { await api("/api/users", { method: "DELETE", body: JSON.stringify({ id: u.id }) }); refetch(); }}
+                <button onClick={withErrorAlert(async () => { await api("/api/users", { method: "DELETE", body: JSON.stringify({ id: u.id }) }); refetch(); })}
                   className="p-1.5 rounded" style={{ color: "var(--red)" }}><Trash2 size={14} /></button>
               )}
             </div>

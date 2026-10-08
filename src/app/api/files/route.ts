@@ -2,17 +2,20 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { jsonResponse, errorResponse, apiHandler } from "@/lib/utils";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { r2Client, R2_BUCKET } from "@/lib/r2";
+import { r2Client, R2_BUCKET, requireR2 } from "@/lib/r2";
 import path from "path";
 import { randomUUID } from "crypto";
 
 export const POST = apiHandler(async (req) => {
   await requireAuth(["Admin", "Office"]);
+  requireR2();
   const formData = await req.formData();
-  const orderId = formData.get("orderId") as string;
-  const file = formData.get("file") as File;
+  const orderId = formData.get("orderId");
+  const file = formData.get("file");
 
-  if (!orderId || !file) return errorResponse("orderId i plik są wymagane");
+  if (typeof orderId !== "string" || !orderId || !(file instanceof File)) {
+    return errorResponse("orderId i plik są wymagane");
+  }
 
   // Sanitize orderId to prevent path traversal
   const sanitizedOrderId = orderId.replace(/[^a-zA-Z0-9_-]/g, "");
@@ -32,6 +35,10 @@ export const POST = apiHandler(async (req) => {
   // Check file size (max 20MB)
   const MAX_FILE_SIZE = 20 * 1024 * 1024;
   if (file.size > MAX_FILE_SIZE) return errorResponse("Maksymalny rozmiar pliku to 20MB");
+
+  // Check the order exists before uploading, so no orphaned objects end up in R2
+  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { id: true } });
+  if (!order) return errorResponse("Zamówienie nie znalezione", 404);
 
   // Check file count (max 20)
   const existingFiles = await prisma.orderFile.count({ where: { orderId } });
